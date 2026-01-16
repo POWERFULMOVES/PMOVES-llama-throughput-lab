@@ -170,7 +170,9 @@ def auto_detect_model():
         model_dirs = [
             os.path.join(SCRIPT_DIR, "models"),
             os.path.join(SCRIPT_DIR, "llama.cpp", "models"),
+            "/models",
             os.path.join(home, "models"),
+            os.path.join(home, "Models"),
             os.path.join(home, "Downloads"),
             os.path.join(home, ".cache", "lm-studio", "models"),
         ]

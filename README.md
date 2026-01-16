@@ -30,6 +30,9 @@ pick one or set `LLAMA_MODEL_PATH`.
 It also auto-detects `llama-server` from `LLAMA_CPP_DIR`, walking up parent
 directories to find `llama.cpp`, or `PATH` unless you set it in the menu.
 
+Model auto-detection searches common locations including `./models`, `./llama.cpp/models`,
+`/models`, `~/models`, `~/Models`, `~/Downloads`, and `~/.cache/lm-studio/models`.
+
 ```bash
 ./run_llama_tests.py
 ```
