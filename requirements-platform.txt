@@ -1,0 +1,5 @@
+# PMOVES.AI platform integration dependencies
+# Core sweep scripts use stdlib only — these are for optional platform bridges
+nats-py>=2.7,<3
+prometheus-client>=0.20,<1
+urllib3>=2.0,<3
