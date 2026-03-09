@@ -26,6 +26,14 @@ ENV LLAMA_RESULTS_DIR=/results \
     LLAMA_SERVER_HOST=127.0.0.1 \
     PYTHONUNBUFFERED=1
 
+# Security: Run as non-root user
+RUN groupadd -r llama --gid=65532 && \
+    useradd -r -g llama --uid=65532 --home-dir=/app --shell=/sbin/nologin llama && \
+    chown -R llama:llama /app /results && \
+    chown -R llama:llama /var/log/nginx /var/lib/nginx /var/cache/nginx && \
+    sed -i 's/listen\s*80/listen 8201/' /etc/nginx/sites-enabled/default 2>/dev/null || true
+USER llama
+
 EXPOSE 8201
 
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
