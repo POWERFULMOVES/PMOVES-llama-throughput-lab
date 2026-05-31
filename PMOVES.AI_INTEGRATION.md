@@ -1,39 +1,44 @@
-# PMOVES.AI Integration Dossier
+# PMOVES.AI Integration — llama-throughput-lab
 
-_Last updated: 2026-04-04_
+## Service Description
 
-## Module
-- Name: PMOVES-llama-throughput-lab
-- Path: PMOVES-llama-throughput-lab
+llama-throughput-lab is a benchmarking tool for measuring LLM inference
+throughput across different hardware configurations and model sizes.
 
-## Purpose in PMOVES.AI
-- Llama model benchmarking, throughput testing, and performance analysis.
+## Port Bindings
 
-## PMOVES Overlay Surface
-- pmoves-integrations/ overlay path (if used): _TBD_
-- Compose/profile wiring: _TBD_
-- Env/secret inputs: _TBD_
-- Auth/JWT requirements: _TBD_
+No persistent service ports — this is a CLI/batch tool, not a long-running
+service.
 
-## Contracts and Topics
-- NATS subjects (if any): _TBD_
-- Supabase schema/tables touched (if any): _TBD_
-- MCP endpoints/skills (if any): _TBD_
+## Integration Points
 
-## Boot Order and Health
-- Bring-up dependency order: _TBD_
-- Health endpoints: _TBD_
-- Smoke targets: _TBD_
+- **TensorZero Gateway** (`http://tensorzero-gateway:3000`): Use as
+  OpenAI-compatible endpoint for benchmarking routed models
+- **Prometheus** (`http://prometheus:9090`): Query
+  `tensorzero_request_duration_seconds` for latency baselines
+- **NATS** (`nats://nats:pmoves@nats:4222`): Publish benchmark results to
+  `mesh.gpu.benchmark.v1` (planned)
+- **MinIO** (`http://minio:9000`): Store benchmark artifacts in `outputs`
+  bucket
 
-## Hardening Notes
-- Image pinning / provenance: _TBD_
-- Secrets source (*_FILE / vault / GH env): _TBD_
-- Network/security policy constraints: _TBD_
+## Docker Image
 
-## Source Documentation
-- Upstream docs entrypoint: README.md
-- PMOVES docs index reference: pmoves/docs/SUBMODULE_DOCS_DOSSIER.md
+Built from repo root:
 
-## Owner / Audit
-- Owning lane: _TBD_
-- Last integration audit run: 2026-04-04
+```yaml
+# pmoves/images.yaml
+llama-throughput-lab:
+  context: PMOVES-llama-throughput-lab
+  dockerfile: Dockerfile
+```
+
+## Usage
+
+```bash
+# Run benchmark via Make target
+make -C pmoves benchmark-llama MODEL=qwen3-coder-plus
+
+# Direct execution
+cd PMOVES-llama-throughput-lab
+python run_llama_tests.py --model qwen3-coder-plus --provider tensorzero
+```
