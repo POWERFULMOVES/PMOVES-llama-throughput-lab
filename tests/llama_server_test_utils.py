@@ -1,6 +1,7 @@
 import contextlib
 import json
 import os
+import shlex
 import shutil
 import socket
 import subprocess
@@ -13,6 +14,34 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8080
+
+
+def parse_comma_args(raw_args):
+    if not raw_args:
+        return []
+    if "," in raw_args:
+        return [arg.strip() for arg in raw_args.split(",") if arg.strip()]
+    return shlex.split(raw_args)
+
+
+def _has_flag(args, flag):
+    """Check if *flag* (e.g. ``--ctx-size``) is present in *args*.
+
+    Matches both ``--flag value`` and ``--flag=value`` forms.
+    """
+    return any(a == flag or a.startswith(flag + "=") for a in args)
+
+
+def _get_flag_value(args, flag):
+    """Return value for *flag* (e.g. ``--parallel``) from args, or None."""
+    for idx, arg in enumerate(args):
+        if arg == flag:
+            if idx + 1 < len(args):
+                return args[idx + 1]
+            return None
+        if arg.startswith(flag + "="):
+            return arg.split("=", 1)[1]
+    return None
 
 
 def _find_llama_cpp_dir():
@@ -191,7 +220,22 @@ def start_llama_server(port=None, host=None, extra_args=None, ready_timeout_s=No
     else:
         port = int(port)
     if extra_args is None:
-        extra_args = os.environ.get("LLAMA_SERVER_ARGS", "").split()
+        extra_args = parse_comma_args(os.environ.get("LLAMA_SERVER_ARGS", ""))
+
+    # Always set --ctx-size so we don't allocate too much memory.
+    # ctx_size = ctxsize_per_session * parallel; use n_predict when CTXSIZE_PER_SESSION not set.
+    ctxsize_per_session = int(
+        os.environ.get("LLAMA_CTXSIZE_PER_SESSION")
+        or os.environ.get("LLAMA_N_PREDICT", "2048")
+    )
+    parallel = int(os.environ.get("LLAMA_PARALLEL", "1"))
+    parallel_override = _get_flag_value(extra_args, "--parallel")
+    if parallel_override:
+        try:
+            parallel = int(parallel_override)
+        except ValueError:
+            pass
+    ctx_size = ctxsize_per_session * parallel
 
     cmd = [
         server_bin,
@@ -201,17 +245,12 @@ def start_llama_server(port=None, host=None, extra_args=None, ready_timeout_s=No
         str(port),
         "--model",
         model_path,
-    ] + extra_args
-
-    # Always set --ctx-size so we don't allocate too much memory.
-    # ctx_size = ctxsize_per_session * parallel; use n_predict when CTXSIZE_PER_SESSION not set.
-    ctxsize_per_session = int(
-        os.environ.get("LLAMA_CTXSIZE_PER_SESSION")
-        or os.environ.get("LLAMA_N_PREDICT", "2048")
-    )
-    parallel = int(os.environ.get("LLAMA_PARALLEL", "1"))
-    ctx_size = ctxsize_per_session * parallel
-    cmd.extend(["--ctx-size", str(ctx_size), "--parallel", str(parallel)])
+    ]
+    if not _has_flag(extra_args, "--ctx-size"):
+        cmd += ["--ctx-size", str(ctx_size)]
+    if not _has_flag(extra_args, "--parallel"):
+        cmd += ["--parallel", str(parallel)]
+    cmd += extra_args
 
     process = subprocess.Popen(
         cmd,
